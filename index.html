@@ -1,0 +1,927 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101010">
+  <title>Grafik dnia</title>
+  <style>
+    :root{
+      --bg:#101010;
+      --panel:#1b1b1b;
+      --panel-2:#262626;
+      --text:#f4f4f4;
+      --muted:#a8a8a8;
+      --line:#3a3a3a;
+      --red:#801717;
+      --yellow:#fad51e;
+      font-family:Arial, Helvetica, sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    button,input,select{font:inherit}
+    button{cursor:pointer;border:0;color:var(--text)}
+    .topbar{position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;gap:18px;align-items:center;padding:18px 40px;background:#111;border-top:3px solid #ead6d6;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+    .topbar h1{margin:0;font-size:28px;line-height:1.05}
+    .topbar p{margin:6px 0 0;color:var(--muted);font-size:14px}
+    .top-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+    .history-button{background:#8f1717;border-radius:32px;font-weight:800;padding:14px 22px;font-size:17px}
+    .secondary-button,.primary-button,.danger-button,.file-button{border-radius:8px;padding:11px 16px;font-weight:700;background:#333;color:var(--text);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+    .primary-button{background:#1766a8}
+    .danger-button{background:#8f1717}
+    .file-button input{display:none}
+    main{padding:28px 28px 40px;max-width:1450px;margin:0 auto}
+    .metric-grid{display:grid;grid-template-columns:repeat(5,minmax(132px,1fr));gap:14px 54px;margin:8px 0 24px}
+    .metric-button{aspect-ratio:1/1;border-radius:50%;background:#2a2a2a;border:2px solid #444;display:grid;place-items:center;align-content:center;gap:8px;font-size:19px;font-weight:800;text-align:center;min-width:0;box-shadow:inset 0 -10px 20px rgba(0,0,0,.22);transition:transform .12s ease,filter .12s ease,box-shadow .12s ease}
+    .metric-button:hover{transform:translateY(-2px);filter:brightness(1.08);box-shadow:inset 0 -10px 20px rgba(0,0,0,.22),0 8px 25px rgba(0,0,0,.28)}
+    .metric-icon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:50px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+    .metric-icon svg,.small-circle svg,.entry-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+    .emoji-icon{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;line-height:1;display:inline-block}
+    .small-circle .emoji-icon{font-size:31px}
+    .entry-icon .emoji-icon{font-size:20px}
+    .analytics{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:8px}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .section-title h2{margin:0;font-size:22px}
+    .toggle-row{display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:12px;align-items:center}
+    .toggle-row label{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#cfcfcf;font-size:14px;white-space:nowrap}
+    .toggle-row input{accent-color:#9a9a9a;width:16px;height:16px}
+    .chart-wrap{position:relative;background:#111;border:1px solid #303030;border-radius:8px;overflow:hidden;min-height:420px}
+    #mainChart{display:block;width:100%;height:520px;background:#111}
+    .note{color:var(--muted);font-size:13px;line-height:1.4;margin:10px 0 0}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:50;display:none;align-items:center;justify-content:center;padding:24px}
+    .modal-backdrop.open{display:flex}
+    .modal-card{width:36vw;min-width:430px;max-width:680px;max-height:92vh;overflow:auto;background:#1b1b1b;border:1px solid #444;border-radius:14px;padding:18px;box-shadow:0 22px 80px rgba(0,0,0,.65)}
+    .modal-card.wide{width:min(940px,92vw);max-width:940px}
+    .dialog-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    .dialog-head.split{justify-content:space-between}
+    .dialog-head h2,.dialog-head h3{margin:0}
+    .dialog-title-block p{margin:5px 0 0;color:var(--muted)}
+    .small-circle{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;border:2px solid currentColor;color:#fff;flex:0 0 auto}
+    .dialog-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .dialog-fields label{display:grid;gap:6px;color:#ddd;font-weight:700;font-size:13px}
+    .dialog-fields input,.history-open-row input{width:100%;background:#111;color:var(--text);border:1px solid #444;border-radius:8px;padding:10px}
+    .field-full{grid-column:1/-1}
+    .range-row{display:flex;align-items:center;gap:12px}
+    .range-row input{flex:1}
+    .range-value{font-size:20px;font-weight:900;color:var(--yellow);min-width:36px;text-align:center}
+    .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin:8px 0 18px;padding:0}
+    .dialog-list-head{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #333;padding-top:14px;margin-top:4px}
+    .dialog-list-head h3{margin:0;font-size:17px}
+    .entry-list{display:grid;gap:8px;margin-top:10px;max-height:270px;overflow:auto}
+    .entry-item{width:100%;background:#262626;border:1px solid #373737;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;color:#fff}
+    .entry-item:hover{border-color:#777}
+    .entry-main{display:flex;align-items:center;gap:9px}
+    .entry-icon{width:22px;height:22px;display:inline-block;flex:0 0 auto}
+    .entry-detail small{color:var(--muted)}
+    .entry-empty{color:var(--muted);font-size:13px;line-height:1.4;padding:10px;background:#262626;border:1px solid #333;border-radius:6px}
+    .history-open-row{display:flex;align-items:end;gap:10px;flex-wrap:wrap;border-bottom:1px solid #333;padding-bottom:14px;margin-bottom:14px}
+    .history-open-row label{display:grid;gap:6px;color:#ddd;font-weight:700;font-size:13px}
+    .history-layout{display:grid;grid-template-columns:260px 1fr;gap:18px}
+    .history-list{display:grid;gap:8px;max-height:390px;overflow:auto}
+    .history-item{background:#262626;border:1px solid #373737;border-radius:8px;padding:10px;text-align:left;font-weight:700}
+    .history-item.active{border-color:var(--yellow)}
+    .stats-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+    .stat-box{background:#222;border:1px solid #333;border-radius:8px;padding:9px;color:#ddd;font-size:13px}
+
+    .github-section{border-top:1px solid #333;padding-top:14px;margin-top:4px;display:grid;gap:12px}
+    .github-section h3{margin:0;font-size:18px}
+    .github-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .github-grid label{display:grid;gap:6px;color:#ddd;font-weight:700;font-size:13px}
+    .github-grid input{width:100%;background:#111;color:var(--text);border:1px solid #444;border-radius:8px;padding:10px}
+    .github-buttons{display:flex;gap:10px;flex-wrap:wrap}
+    .github-status{font-size:13px;color:var(--muted);line-height:1.35}
+    .backup-grid{display:grid;gap:12px}
+    .backup-grid p{color:var(--muted);line-height:1.45;margin:0}
+    .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:80;background:#222;border:1px solid #555;border-radius:9px;padding:11px 16px;display:none;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+    .toast.show{display:block}
+    @media (max-width:980px){.metric-grid{grid-template-columns:repeat(3,minmax(120px,1fr));gap:18px}.topbar{padding:15px 20px}.modal-card{width:min(560px,94vw);min-width:0}.history-layout{grid-template-columns:1fr}}
+    @media (max-width:620px){main{padding:18px 12px}.metric-grid{grid-template-columns:repeat(2,minmax(110px,1fr));gap:14px}.dialog-fields,.github-grid{grid-template-columns:1fr}.section-title{align-items:flex-start;flex-direction:column}.topbar{align-items:flex-start;flex-direction:column}.top-actions{justify-content:flex-start}#mainChart{height:440px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Grafik dnia</h1>
+      <p id="todayLabel">Dzisiaj</p>
+    </div>
+    <nav class="top-actions">
+      <button id="historyBtn" type="button" class="history-button">HISTORIA</button>
+      <button id="githubLoadTopBtn" type="button" class="secondary-button">WCZYTAJ ONLINE</button>
+      <button id="githubSaveTopBtn" type="button" class="secondary-button">ZAPISZ ONLINE</button>
+      <button id="dataBtn" type="button" class="secondary-button">DANE</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="metricGrid" class="metric-grid" aria-label="Szybkie dodawanie wpisów"></section>
+
+    <section class="analytics">
+      <div class="section-title">
+        <h2>Wykres dnia</h2>
+        <button id="exportPdfBtn" type="button" class="secondary-button">Pobierz PDF A4</button>
+      </div>
+      <div id="toggleRow" class="toggle-row"></div>
+      <div class="chart-wrap">
+        <canvas id="mainChart" width="1400" height="620"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <div id="entryModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <section class="modal-card">
+      <header class="dialog-head">
+        <div id="dialogIcon" class="small-circle"></div>
+        <div class="dialog-title-block">
+          <h2 id="dialogTitle">Wpis</h2>
+          <p id="dialogSubtitle">Wybrany dzień</p>
+        </div>
+      </header>
+      <form id="entryForm">
+        <div id="entryFields" class="dialog-fields"></div>
+        <div class="dialog-actions">
+          <button id="deleteEntryBtn" type="button" class="danger-button" hidden>Usuń</button>
+          <button id="cancelEntryBtn" type="button" class="secondary-button">Anuluj</button>
+          <button type="submit" class="primary-button">Zapisz</button>
+        </div>
+      </form>
+      <div class="dialog-list-head">
+        <h3>Wpisy tego typu w tym dniu</h3>
+        <button id="newEntryBtn" type="button" class="secondary-button" hidden>Nowy wpis</button>
+      </div>
+      <div id="metricEntryList" class="entry-list"></div>
+    </section>
+  </div>
+
+  <div id="historyModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <section class="modal-card wide">
+      <header class="dialog-head split">
+        <h2>Historia</h2>
+        <button id="closeHistoryBtn" type="button" class="secondary-button">Zamknij</button>
+      </header>
+      <div class="history-open-row">
+        <label>Otwórz konkretną datę
+          <input id="historyDateInput" type="date">
+        </label>
+        <button id="openHistoryDateBtn" type="button" class="primary-button">Otwórz dzień</button>
+      </div>
+      <div class="history-layout">
+        <aside>
+          <h3>Zapisane dni</h3>
+          <div id="historyList" class="history-list"></div>
+        </aside>
+        <section>
+          <div class="dialog-head split">
+            <h3 id="historyTitle">Wybierz dzień</h3>
+            <button id="openSelectedHistoryDayBtn" type="button" class="primary-button" hidden>Otwórz ten dzień</button>
+          </div>
+          <div id="historyStats" class="stats-list"></div>
+          <h3>Wpisy</h3>
+          <div id="historyEntries" class="entry-list"></div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <div id="dataModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="dataTitle">
+    <section class="modal-card">
+      <header class="dialog-head split">
+        <h2 id="dataTitle">Dane strony</h2>
+        <button id="closeDataBtn" type="button" class="secondary-button">Zamknij</button>
+      </header>
+      <div class="backup-grid">
+        <button id="exportJsonBtn" type="button" class="primary-button">Eksportuj dane do pliku</button>
+        <label class="file-button">Importuj dane z pliku
+          <input id="importJsonInput" type="file" accept="application/json,.json">
+        </label>
+        <p>Dane zapisują się też lokalnie w tej przeglądarce. Eksport/import jest kopią awaryjną.</p>
+
+        <div class="github-section">
+          <h3>GitHub online</h3>
+          <p>Tu ustawiasz zapis do pliku <strong>data/dane.json</strong> w swoim repozytorium. Token wpisujesz tylko tutaj — nie wgrywaj go do GitHuba jako pliku.</p>
+          <div class="github-grid">
+            <label>Właściciel / login GitHub
+              <input id="githubOwner" type="text" autocomplete="off" placeholder="np. twoja-nazwa">
+            </label>
+            <label>Nazwa repozytorium
+              <input id="githubRepo" type="text" autocomplete="off" placeholder="np. grafik-dnia">
+            </label>
+            <label>Gałąź
+              <input id="githubBranch" type="text" autocomplete="off" value="main">
+            </label>
+            <label>Plik danych
+              <input id="githubPath" type="text" autocomplete="off" value="data/dane.json">
+            </label>
+            <label class="field-full">Token GitHub
+              <input id="githubToken" type="password" autocomplete="off" placeholder="wklej token z uprawnieniem Contents: Read and write">
+            </label>
+          </div>
+          <div class="github-buttons">
+            <button id="saveGithubSettingsBtn" type="button" class="secondary-button">Zapamiętaj ustawienia</button>
+            <button id="githubLoadBtn" type="button" class="secondary-button">Wczytaj online</button>
+            <button id="githubSaveBtn" type="button" class="secondary-button">Zapisz online</button>
+            <button id="clearGithubSettingsBtn" type="button" class="danger-button">Usuń ustawienia</button>
+          </div>
+          <div id="githubStatus" class="github-status">Status: nie sprawdzono.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = "grafik_dnia_produktywnosc_v3";
+  const GITHUB_SETTINGS_KEY = "grafik_dnia_github_sync_v1";
+  const COLORS = {
+    productivity: "#fad51e", sleep: "#a6cff5", coffee: "#e82e00", energy: "#c92083", water: "#b7e1f7",
+    sugar: "#f5ff87", calories: "#2ac93d", smoking: "#264f8c", walking: "#67758a", exercise: "#f2b55e"
+  };
+  const metrics = [
+    {id:"productivity",name:"Produktywność",shortName:"Produktyw-<br>ność",color:COLORS.productivity,min:0,max:6,unit:"",type:"productivity"},
+    {id:"sleep",name:"Sen",color:COLORS.sleep,min:3,max:11,unit:"h",type:"sleep"},
+    {id:"coffee",name:"Kawa",color:COLORS.coffee,min:0,max:1000,unit:"ml",type:"amountInterval"},
+    {id:"energy",name:"Energetyki",color:COLORS.energy,min:0,max:1000,unit:"ml",type:"amountInterval"},
+    {id:"water",name:"Woda",color:COLORS.water,min:0,max:2200,unit:"ml",type:"event",cumulative:true},
+    {id:"sugar",name:"Cukier",color:COLORS.sugar,min:0,max:200,unit:"g",type:"event"},
+    {id:"calories",name:"Kalorie",color:COLORS.calories,min:0,max:2100,unit:"kcal",type:"event",cumulative:true},
+    {id:"smoking",name:"Palenie",color:COLORS.smoking,min:0,max:30,unit:"min",type:"duration"},
+    {id:"walking",name:"Spacer",color:COLORS.walking,min:0,max:120,unit:"min",type:"duration"},
+    {id:"exercise",name:"Sport",color:COLORS.exercise,min:0,max:120,unit:"min",type:"duration"}
+  ];
+  const emojiMap = {
+    productivity:"😀", sleep:"🛏", coffee:"☕️", energy:"🔋", water:"💧",
+    sugar:"🍰", calories:"🔥", smoking:"🚬", walking:"🚶‍♀️‍➡️", exercise:"💪"
+  };
+  const iconMap = Object.fromEntries(Object.entries(emojiMap).map(([key,value])=>[key,`<span class="emoji-icon" aria-hidden="true">${value}</span>`]));
+
+  const $ = (id)=>document.getElementById(id);
+  const metricById = (id)=>metrics.find(m=>m.id===id);
+  const pad = (n)=>String(n).padStart(2,"0");
+  const todayIso = ()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
+  const displayDate = (iso)=> iso ? iso.split("-").reverse().join(".") : "";
+  const minutesFromTime = (time)=>{const [h,m]=(time||"00:00").split(":").map(Number);return h*60+m;};
+  const timeFromMinutes = (minutes)=>{let v=Math.max(0,Math.min(1439,Math.round(minutes)));return `${pad(Math.floor(v/60))}:${pad(v%60)}`;};
+  const uid = ()=>`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`;
+  const escapeHtml = (s)=>String(s ?? "").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
+
+  let storage = null;
+  try{ localStorage.setItem("__test_grafik","1"); localStorage.removeItem("__test_grafik"); storage = localStorage; }catch(e){ storage = null; }
+
+  let data = {days:{}, entries:[]};
+  let currentDate = todayIso();
+  let visible = Object.fromEntries(metrics.map(m=>[m.id,true]));
+  let activeMetricId = null;
+  let editingId = null;
+  let selectedHistoryDate = null;
+
+  function normalizeDataObject(parsed){
+    if(!parsed || typeof parsed !== "object") return {days:{}, entries:[]};
+    return {
+      days: parsed.days && typeof parsed.days === "object" ? parsed.days : {},
+      entries: Array.isArray(parsed.entries) ? parsed.entries : []
+    };
+  }
+  function setDataObject(parsed){
+    const normalized = normalizeDataObject(parsed);
+    data.days = normalized.days;
+    data.entries = normalized.entries;
+  }
+  function loadData(){
+    if(!storage) return;
+    try{
+      const parsed = JSON.parse(storage.getItem(STORAGE_KEY) || "null");
+      if(parsed && typeof parsed === "object") setDataObject(parsed);
+    }catch(e){ console.warn("Nie udało się odczytać danych", e); }
+  }
+  function saveData(){
+    ensureDay(currentDate);
+    if(!storage) return;
+    try{ storage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+    catch(e){ toast("Nie udało się zapisać danych w przeglądarce."); }
+  }
+  function ensureDay(date){
+    if(!data.days[date]) data.days[date] = {date, wakeTime:"07:00", bedTime:"23:30", endTime:"23:59", createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()};
+    return data.days[date];
+  }
+  function getDayEntries(date=currentDate){
+    return data.entries.filter(e=>e.dayDate===date).sort((a,b)=>(a.time||a.startTime||a.wakeTime||"").localeCompare(b.time||b.startTime||b.wakeTime||""));
+  }
+  function getEntriesForMetric(metricId,date=currentDate){ return getDayEntries(date).filter(e=>e.metricId===metricId); }
+  function currentDay(){ return ensureDay(currentDate); }
+  function setDay(date){ currentDate = date; ensureDay(currentDate); selectedHistoryDate = date; updateDayLabel(); renderAll(); saveData(); }
+  function updateDayLabel(){
+    const label = currentDate===todayIso() ? `Dzisiaj, ${displayDate(currentDate)}` : displayDate(currentDate);
+    $("todayLabel").textContent = label;
+    $("historyDateInput").value = currentDate;
+  }
+  function toast(text){
+    const el=$("toast"); el.textContent=text; el.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("show"),2400);
+  }
+
+  function initMetricButtons(){
+    $("metricGrid").innerHTML = metrics.map(m=>`<button class="metric-button" type="button" data-metric="${m.id}" style="border-color:${m.color}"><span class="metric-icon">${iconMap[m.id]}</span><span>${m.shortName || m.name}</span></button>`).join("");
+  }
+  function initToggles(){
+    $("toggleRow").innerHTML = metrics.filter(m=>m.id!=="productivity").map(m=>`<label><input type="checkbox" data-toggle="${m.id}" checked> ${m.name}</label>`).join("");
+    document.querySelectorAll("[data-toggle]").forEach(input=>input.addEventListener("change",()=>{ visible[input.dataset.toggle]=input.checked; drawChart(); }));
+  }
+
+  function openModal(id){ $(id).classList.add("open"); }
+  function closeModal(id){ $(id).classList.remove("open"); }
+  function closeAllModals(){ document.querySelectorAll(".modal-backdrop.open").forEach(m=>m.classList.remove("open")); }
+
+  function defaultTime(){
+    if(currentDate===todayIso()){
+      const d = new Date();
+      const rounded = Math.round((d.getHours()*60+d.getMinutes())/30)*30;
+      return timeFromMinutes(Math.max(minutesFromTime(currentDay().wakeTime), Math.min(1439, rounded)));
+    }
+    return currentDay().wakeTime || "07:00";
+  }
+  function addMinutes(time, minutes){ return timeFromMinutes(minutesFromTime(time)+minutes); }
+  function durationBetween(start,end){
+    let s=minutesFromTime(start), e=minutesFromTime(end);
+    if(e<s) e+=1440;
+    return Math.max(0,e-s);
+  }
+  function formatDuration(mins){ const h=Math.floor(mins/60), m=Math.round(mins%60); return `${h} h ${pad(m)} min`; }
+
+  function openEntry(metricId, entryId=null){
+    const metric = metricById(metricId); if(!metric) return;
+    let entry = entryId ? data.entries.find(e=>e.id===entryId) : null;
+    if(metric.type === "sleep" && !entry){
+      entry = getEntriesForMetric("sleep", currentDate)[0] || null;
+      if(entry) entryId = entry.id;
+    }
+    activeMetricId = metricId;
+    editingId = entry ? entry.id : null;
+    $("dialogIcon").style.color = metric.color;
+    $("dialogIcon").innerHTML = iconMap[metric.id];
+    $("dialogTitle").textContent = entry ? `Edytuj: ${metric.name}` : metric.name;
+    $("dialogSubtitle").textContent = `Dzień: ${displayDate(currentDate)}`;
+    $("entryFields").innerHTML = fieldsFor(metric, entry);
+    $("deleteEntryBtn").hidden = !entry;
+    $("newEntryBtn").hidden = !entry || metric.type === "sleep";
+    attachFieldEvents(metric);
+    renderMetricEntryList();
+    openModal("entryModal");
+  }
+
+  function fieldsFor(metric, entry){
+    const now = defaultTime();
+    const start = entry?.startTime || now;
+    const end = entry?.endTime || addMinutes(start, 30);
+    if(metric.type === "productivity"){
+      const score = Number(entry?.value ?? 3);
+      return `<label>Godzina od<input name="startTime" type="time" value="${escapeHtml(start)}" required></label>
+              <label>Godzina do<input name="endTime" type="time" value="${escapeHtml(end)}" required></label>
+              <label class="field-full">Ocena 0–6
+                <div class="range-row"><input id="scoreRange" name="value" type="range" min="0" max="6" step="1" value="${score}"><span id="scoreValue" class="range-value">${score}</span></div>
+              </label>`;
+    }
+    if(metric.type === "sleep"){
+      const day = currentDay();
+      const bed = entry?.bedTime || day.bedTime || "23:30";
+      const wake = entry?.wakeTime || day.wakeTime || "07:00";
+      return `<label>Godzina pójścia spać<input name="bedTime" type="time" value="${escapeHtml(bed)}" required></label>
+              <label>Godzina pobudki<input name="wakeTime" type="time" value="${escapeHtml(wake)}" required></label>
+              <p class="note field-full">Godzina pobudki ustawia początek osi czasu na wykresie.</p>`;
+    }
+    if(metric.type === "event"){
+      const value = Number(entry?.value ?? (metric.id==="water" ? 250 : metric.id==="calories" ? 300 : 20));
+      const time = entry?.time || now;
+      return `<label>Czas<input name="time" type="time" value="${escapeHtml(time)}" required></label>
+              <label>Ilość (${metric.unit})<input name="value" type="number" min="0" max="${metric.max}" step="1" value="${value}" required></label>`;
+    }
+    if(metric.type === "amountInterval"){
+      const value = Number(entry?.value ?? 250);
+      return `<label>Godzina od<input name="startTime" type="time" value="${escapeHtml(start)}" required></label>
+              <label>Godzina do<input name="endTime" type="time" value="${escapeHtml(end)}" required></label>
+              <label class="field-full">Ilość (${metric.unit})<input name="value" type="number" min="0" max="${metric.max}" step="1" value="${value}" required></label>`;
+    }
+    const value = Number(entry?.value ?? (durationBetween(start,end) || 30));
+    return `<label>Godzina od<input id="durationStart" name="startTime" type="time" value="${escapeHtml(start)}" required></label>
+            <label>Godzina do<input id="durationEnd" name="endTime" type="time" value="${escapeHtml(end)}" required></label>
+            <label class="field-full">Czas (${metric.unit})<input id="durationValue" name="value" type="number" min="0" max="${metric.max}" step="1" value="${value}" required></label>`;
+  }
+  function attachFieldEvents(metric){
+    const score = $("scoreRange");
+    if(score) score.addEventListener("input",()=>$("scoreValue").textContent=score.value);
+    const s=$("durationStart"), e=$("durationEnd"), v=$("durationValue");
+    if(s && e && v){
+      const update=()=>{ v.value = Math.min(metricById(activeMetricId).max, durationBetween(s.value,e.value)); };
+      s.addEventListener("input",update); e.addEventListener("input",update);
+    }
+  }
+
+  function saveEntryFromForm(event){
+    event.preventDefault();
+    const metric = metricById(activeMetricId); if(!metric) return;
+    const fd = new FormData($("entryForm"));
+    let old = editingId ? data.entries.find(e=>e.id===editingId) : null;
+    if(metric.type === "sleep" && !old){
+      old = getEntriesForMetric("sleep", currentDate)[0] || null;
+      if(old) editingId = old.id;
+    }
+    const entry = old || {id:uid(), dayDate:currentDate, metricId:metric.id, createdAt:new Date().toISOString()};
+    entry.dayDate = currentDate;
+    entry.metricId = metric.id;
+    entry.updatedAt = new Date().toISOString();
+    if(metric.type === "sleep"){
+      entry.bedTime = fd.get("bedTime");
+      entry.wakeTime = fd.get("wakeTime");
+      entry.value = Math.round(durationBetween(entry.bedTime, entry.wakeTime)/60*10)/10;
+      const day = currentDay();
+      day.bedTime = entry.bedTime; day.wakeTime = entry.wakeTime; day.updatedAt = new Date().toISOString();
+    } else if(metric.type === "event"){
+      entry.time = fd.get("time");
+      entry.startTime = entry.time;
+      entry.endTime = addMinutes(entry.time, 5);
+      entry.value = Math.max(0, Number(fd.get("value") || 0));
+    } else {
+      entry.startTime = fd.get("startTime");
+      entry.endTime = fd.get("endTime");
+      entry.value = Math.max(0, Number(fd.get("value") || 0));
+    }
+    if(!old) data.entries.push(entry);
+    if(metric.type === "sleep"){
+      data.entries = data.entries.filter(e=>!(e.dayDate===currentDate && e.metricId==="sleep" && e.id!==entry.id));
+    }
+    currentDay().updatedAt = new Date().toISOString();
+    saveData();
+    editingId = entry.id;
+    openEntry(metric.id, entry.id);
+    renderAll();
+    toast("Zapisano");
+  }
+  function deleteEditingEntry(){
+    if(!editingId) return;
+    data.entries = data.entries.filter(e=>e.id!==editingId);
+    currentDay().updatedAt = new Date().toISOString();
+    const metricId = activeMetricId;
+    editingId = null;
+    saveData();
+    openEntry(metricId);
+    renderAll();
+    toast("Usunięto wpis");
+  }
+
+  function entryDetail(entry){
+    const metric = metricById(entry.metricId);
+    if(!metric) return "";
+    if(metric.type === "sleep") return `${entry.bedTime} → ${entry.wakeTime}, ${formatDuration(Math.round((entry.value||0)*60))}`;
+    if(metric.type === "event") return `${entry.time}, ${entry.value} ${metric.unit}`;
+    if(metric.type === "productivity") return `${entry.startTime}–${entry.endTime}, ocena ${entry.value}/6`;
+    return `${entry.startTime}–${entry.endTime}, ${entry.value} ${metric.unit}`;
+  }
+  function entryButton(entry){
+    const metric = metricById(entry.metricId);
+    return `<button type="button" class="entry-item" data-edit-entry="${entry.id}" data-edit-metric="${entry.metricId}">
+      <span class="entry-main"><span class="entry-icon" style="color:${metric.color}">${iconMap[metric.id]}</span><span class="entry-detail"><strong>${metric.name}</strong><br><small>${escapeHtml(entryDetail(entry))}</small></span></span><small>Edytuj</small>
+    </button>`;
+  }
+  function renderMetricEntryList(){
+    const list = getEntriesForMetric(activeMetricId);
+    $("metricEntryList").innerHTML = list.length ? list.map(entryButton).join("") : `<div class="entry-empty">Brak wpisów tego typu w tym dniu.</div>`;
+    $("metricEntryList").querySelectorAll("[data-edit-entry]").forEach(btn=>btn.addEventListener("click",()=>openEntry(btn.dataset.editMetric, btn.dataset.editEntry)));
+  }
+
+  function allSavedDates(){
+    const dates = new Set(Object.keys(data.days));
+    data.entries.forEach(e=>dates.add(e.dayDate));
+    dates.add(currentDate);
+    return Array.from(dates).sort().reverse();
+  }
+  function renderHistory(){
+    const dates = allSavedDates();
+    $("historyList").innerHTML = dates.length ? dates.map(date=>`<button type="button" class="history-item ${date===selectedHistoryDate?'active':''}" data-history-date="${date}">${displayDate(date)}<br><small>${getDayEntries(date).length} wpisów</small></button>`).join("") : `<div class="entry-empty">Nie ma jeszcze zapisanych dni.</div>`;
+    $("historyList").querySelectorAll("[data-history-date]").forEach(btn=>btn.addEventListener("click",()=>selectHistoryDate(btn.dataset.historyDate)));
+    selectHistoryDate(selectedHistoryDate || currentDate, false);
+  }
+  function selectHistoryDate(date, rerenderList=true){
+    selectedHistoryDate = date;
+    if(rerenderList) renderHistory();
+    const entries = getDayEntries(date);
+    $("historyTitle").textContent = `Dzień ${displayDate(date)}`;
+    $("openSelectedHistoryDayBtn").hidden = false;
+    const sums = summarizeDay(date);
+    $("historyStats").innerHTML = sums.map(s=>`<div class="stat-box"><strong>${escapeHtml(s.label)}</strong><br>${escapeHtml(s.value)}</div>`).join("");
+    $("historyEntries").innerHTML = entries.length ? entries.map(entryButton).join("") : `<div class="entry-empty">Brak wpisów w tym dniu.</div>`;
+    $("historyEntries").querySelectorAll("[data-edit-entry]").forEach(btn=>btn.addEventListener("click",()=>{ setDay(date); closeModal("historyModal"); openEntry(btn.dataset.editMetric, btn.dataset.editEntry); }));
+  }
+  function summarizeDay(date){
+    const entries = getDayEntries(date);
+    const productivity = entries.filter(e=>e.metricId==="productivity");
+    const avgProd = productivity.length ? (productivity.reduce((a,e)=>a+Number(e.value||0),0)/productivity.length).toFixed(1) : "—";
+    const water = entries.filter(e=>e.metricId==="water").reduce((a,e)=>a+Number(e.value||0),0);
+    const kcal = entries.filter(e=>e.metricId==="calories").reduce((a,e)=>a+Number(e.value||0),0);
+    const sleepEntries = entries.filter(e=>e.metricId==="sleep");
+    const sleep = sleepEntries.length ? sleepEntries[sleepEntries.length-1] : null;
+    return [
+      {label:"Produktywność", value: avgProd === "—" ? "brak" : `${avgProd}/6`},
+      {label:"Woda", value: `${water} ml`},
+      {label:"Kalorie", value: `${kcal} kcal`},
+      {label:"Sen", value: sleep ? `${sleep.value} h` : "brak"}
+    ];
+  }
+
+  function renderAll(){ updateDayLabel(); drawChart(); }
+
+  function drawChart(){
+    const canvas = $("mainChart");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle = "#111"; ctx.fillRect(0,0,W,H);
+
+    const rightMetrics = metrics.filter(m=>m.id!=="productivity" && visible[m.id]);
+    const rightAxisW = rightMetrics.length ? Math.min(500, Math.max(150, rightMetrics.length*52 + 28)) : 28;
+    const padL=96, padR=rightAxisW, padT=56, padB=64;
+    const chartRight = W-padR;
+    const chartW = chartRight-padL, chartH=H-padT-padB;
+    const day = currentDay();
+    let startMin = minutesFromTime(day.wakeTime || "07:00");
+    const endMin = 1439;
+    if(startMin >= endMin-60) startMin = 420;
+    const x = (min)=> padL + ((Math.max(startMin,Math.min(endMin,min))-startMin)/(endMin-startMin))*chartW;
+    const yProd = (value)=> padT + (1-(Math.max(0,Math.min(6,Number(value)))/6))*chartH;
+    const yScale = (metric,value)=> padT + (1-(Math.max(metric.min,Math.min(metric.max,Number(value)))-metric.min)/(metric.max-metric.min))*chartH;
+    const bottom = padT + chartH;
+
+    ctx.strokeStyle = "#303030"; ctx.lineWidth = 1;
+    const faces = ["🧌","☠️","😵‍💫","😶","🤗","🥰","🥵"];
+    for(let i=0;i<=6;i++){
+      const y = yProd(i);
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(chartRight,y); ctx.stroke();
+      ctx.fillStyle = "#f5f5f5"; ctx.textAlign="right"; ctx.textBaseline="middle";
+      ctx.font = "15px Arial, sans-serif";
+      ctx.fillText(`${i}`, padL-52, y);
+      ctx.font = "20px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+      ctx.fillText(faces[i], padL-14, y);
+    }
+    ctx.strokeStyle = COLORS.productivity; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,bottom); ctx.stroke();
+
+    const ticks = [];
+    ticks.push(startMin);
+    let firstHour = Math.ceil(startMin/60);
+    for(let h=firstHour; h<=23; h++) ticks.push(h*60);
+    ticks.push(endMin);
+    const uniqueTicks = [...new Set(ticks.filter(t=>t>=startMin && t<=endMin))];
+    ctx.textAlign="center"; ctx.textBaseline="top"; ctx.font="14px Arial, sans-serif";
+    uniqueTicks.forEach((t,idx)=>{
+      const px=x(t);
+      ctx.strokeStyle="#252525"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(px,padT); ctx.lineTo(px,bottom); ctx.stroke();
+      ctx.fillStyle = idx===0 || t===endMin ? "#f4f4f4" : "#aaa";
+      ctx.fillText(timeFromMinutes(t), px, bottom+12);
+    });
+    ctx.strokeStyle="#555"; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(padL,bottom); ctx.lineTo(chartRight,bottom); ctx.stroke();
+    ctx.fillStyle = "#ccc"; ctx.textAlign="left"; ctx.textBaseline="bottom"; ctx.font="14px Arial, sans-serif";
+    ctx.fillText("oś czasu", padL, H-8);
+
+    function shortAxisName(metric){
+      const names = {sleep:"Sen",coffee:"Kawa",energy:"Ener.",water:"Woda",sugar:"Cukier",calories:"Kcal",smoking:"Pap.",walking:"Spacer",exercise:"Sport"};
+      return names[metric.id] || metric.name;
+    }
+    function axisValue(metric, value){
+      if(metric.id==="sleep") return `${value}h`;
+      if(value >= 1000) return String(Math.round(value));
+      return String(Math.round(value));
+    }
+    if(rightMetrics.length){
+      const axisLeft = chartRight + 18;
+      const axisRight = W - 18;
+      const step = rightMetrics.length > 1 ? (axisRight-axisLeft)/(rightMetrics.length-1) : 0;
+      ctx.save();
+      rightMetrics.forEach((metric,i)=>{
+        const ax = axisLeft + step*i;
+        ctx.strokeStyle = metric.color; ctx.fillStyle = metric.color; ctx.lineWidth = 1.3;
+        ctx.globalAlpha = .82;
+        ctx.beginPath(); ctx.moveTo(ax,padT); ctx.lineTo(ax,bottom); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.font = "11px Arial, sans-serif";
+        ctx.fillText(shortAxisName(metric), ax, padT-28);
+        ctx.fillText(metric.unit || "", ax, padT-15);
+        const vals = [metric.max, (metric.max+metric.min)/2, metric.min];
+        ctx.font = "11px Arial, sans-serif";
+        vals.forEach(v=>{
+          const yy = yScale(metric,v);
+          ctx.beginPath(); ctx.moveTo(ax-4,yy); ctx.lineTo(ax+4,yy); ctx.stroke();
+          ctx.fillText(axisValue(metric,v), ax, yy+4);
+        });
+      });
+      ctx.restore();
+    }
+
+    const entries = getDayEntries();
+    rightMetrics.forEach(metric=>{
+      const list = entries.filter(e=>e.metricId===metric.id).sort((a,b)=>minutesFromTime(a.time||a.startTime||a.wakeTime||"00:00")-minutesFromTime(b.time||b.startTime||b.wakeTime||"00:00"));
+      if(!list.length) return;
+      ctx.save(); ctx.globalAlpha=.82; ctx.fillStyle=metric.color; ctx.strokeStyle=metric.color; ctx.lineWidth=4;
+      if(metric.type === "sleep"){
+        const e = list[list.length-1];
+        const yy = yScale(metric, Number(e.value||0));
+        ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(chartRight, yy); ctx.stroke();
+      }else if(metric.type === "event"){
+        let total=0, points=[];
+        list.forEach(e=>{
+          const val=Number(e.value||0); const min=minutesFromTime(e.time||e.startTime);
+          const px=x(min); const yy=yScale(metric,val);
+          ctx.fillRect(px-6, yy, 12, bottom-yy);
+          if(metric.cumulative){ total+=val; points.push([px,yScale(metric,total)]); }
+        });
+        if(metric.cumulative && points.length){
+          ctx.globalAlpha=1; ctx.lineWidth=3; ctx.beginPath();
+          points.forEach((p,i)=> i ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1])); ctx.stroke();
+        }
+      }else{
+        list.forEach(e=>{
+          const s=minutesFromTime(e.startTime), en=minutesFromTime(e.endTime);
+          const px=x(s), px2=Math.max(px+8,x(en));
+          const yy=yScale(metric, Number(e.value||0));
+          ctx.fillRect(px, yy, Math.max(8,px2-px), bottom-yy);
+        });
+      }
+      ctx.restore();
+    });
+
+    const prod = entries.filter(e=>e.metricId==="productivity").sort((a,b)=>minutesFromTime(a.startTime)-minutesFromTime(b.startTime));
+    ctx.save();
+    ctx.strokeStyle = COLORS.productivity; ctx.fillStyle = COLORS.productivity; ctx.lineWidth=3;
+    if(!prod.length){
+      ctx.beginPath(); ctx.moveTo(padL, yProd(3)); ctx.lineTo(chartRight, yProd(3)); ctx.stroke();
+    }else{
+      ctx.beginPath();
+      ctx.moveTo(padL, yProd(3));
+      prod.forEach(e=>{
+        let s=minutesFromTime(e.startTime), en=minutesFromTime(e.endTime);
+        if(en < s) en = s;
+        s=Math.max(startMin,Math.min(endMin,s));
+        en=Math.max(startMin,Math.min(endMin,en));
+        const val=Math.max(0,Math.min(6,Number(e.value||3)));
+        ctx.lineTo(x(s), yProd(3));
+        ctx.lineTo(x(s), yProd(val));
+        ctx.lineTo(x(en), yProd(val));
+        ctx.lineTo(x(en), yProd(3));
+      });
+      ctx.lineTo(chartRight, yProd(3));
+      ctx.stroke();
+      prod.forEach(e=>{
+        const mid=(minutesFromTime(e.startTime)+minutesFromTime(e.endTime))/2;
+        const px=x(mid); const yy=yProd(e.value ?? 3);
+        ctx.beginPath(); ctx.arc(px,yy,5,0,Math.PI*2); ctx.fill();
+      });
+    }
+    ctx.restore();
+  }
+
+  function exportPdf(){
+    drawChart();
+    const canvas = $("mainChart");
+    const imgData = canvas.toDataURL("image/jpeg",0.96).split(",")[1];
+    const jpg = base64ToBytes(imgData);
+    const pageW=842, pageH=595;
+    const margin=28;
+    const imgW=pageW-margin*2;
+    const imgH=imgW*(canvas.height/canvas.width);
+    const y=(pageH-imgH)/2;
+    const content = `q\n${imgW.toFixed(2)} 0 0 ${imgH.toFixed(2)} ${margin} ${y.toFixed(2)} cm\n/Im0 Do\nQ\n`;
+    const blob = makePdf(pageW,pageH,canvas.width,canvas.height,jpg,content);
+    downloadBlob(blob, `grafik-dnia-${currentDate}.pdf`);
+  }
+  function makePdf(pageW,pageH,imgW,imgH,imageBytes,content){
+    const enc = new TextEncoder(); const parts=[]; const offsets=[0]; let length=0;
+    const addText=t=>{const b=enc.encode(t); parts.push(b); length+=b.length;};
+    const addBytes=b=>{parts.push(b); length+=b.length;}; const mark=()=>offsets.push(length);
+    addText("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+    mark(); addText("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    mark(); addText("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+    mark(); addText(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> /ProcSet [/PDF /ImageC] >> /Contents 5 0 R >>\nendobj\n`);
+    mark(); addText(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);
+    addBytes(imageBytes); addText("\nendstream\nendobj\n");
+    mark(); addText(`5 0 obj\n<< /Length ${enc.encode(content).length} >>\nstream\n${content}endstream\nendobj\n`);
+    const xrefStart=length;
+    addText(`xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(o=>`${String(o).padStart(10,"0")} 00000 n `).join("\n")}\ntrailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+    const out=new Uint8Array(length); let pos=0; parts.forEach(p=>{out.set(p,pos); pos+=p.length;}); return new Blob([out],{type:"application/pdf"});
+  }
+  function base64ToBytes(base64){ const bin=atob(base64); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i); return bytes; }
+  function downloadBlob(blob, filename){ const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
+
+  function exportJson(){
+    saveData();
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:"application/json"});
+    downloadBlob(blob, `dane-grafik-dnia-${todayIso()}.json`);
+  }
+  function importJsonFile(file){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const parsed=JSON.parse(reader.result);
+        setDataObject(parsed);
+        ensureDay(currentDate); saveData(); renderAll(); renderHistory(); toast("Zaimportowano dane");
+      }catch(e){ toast("Nie udało się zaimportować pliku JSON."); }
+      $("importJsonInput").value="";
+    };
+    reader.readAsText(file);
+  }
+
+
+  function getGithubSettings(){
+    if(!storage) return null;
+    try{
+      const s = JSON.parse(storage.getItem(GITHUB_SETTINGS_KEY) || "null");
+      if(!s || typeof s !== "object") return null;
+      return {
+        owner: String(s.owner || "").trim(),
+        repo: String(s.repo || "").trim(),
+        branch: String(s.branch || "main").trim() || "main",
+        path: String(s.path || "data/dane.json").trim() || "data/dane.json",
+        token: String(s.token || "").trim()
+      };
+    }catch(e){ return null; }
+  }
+  function fillGithubFields(){
+    const s = getGithubSettings() || {owner:"",repo:"",branch:"main",path:"data/dane.json",token:""};
+    if($("githubOwner")) $("githubOwner").value = s.owner;
+    if($("githubRepo")) $("githubRepo").value = s.repo;
+    if($("githubBranch")) $("githubBranch").value = s.branch || "main";
+    if($("githubPath")) $("githubPath").value = s.path || "data/dane.json";
+    if($("githubToken")) $("githubToken").value = s.token || "";
+  }
+  function readGithubFields(){
+    return {
+      owner: ($("githubOwner")?.value || "").trim(),
+      repo: ($("githubRepo")?.value || "").trim(),
+      branch: ($("githubBranch")?.value || "main").trim() || "main",
+      path: ($("githubPath")?.value || "data/dane.json").trim() || "data/dane.json",
+      token: ($("githubToken")?.value || "").trim()
+    };
+  }
+  function setGithubStatus(text){
+    if($("githubStatus")) $("githubStatus").textContent = "Status: " + text;
+  }
+  function saveGithubSettings(){
+    if(!storage){ toast("Nie można zapamiętać ustawień w tej przeglądarce."); return null; }
+    const s = readGithubFields();
+    if(!s.owner || !s.repo || !s.branch || !s.path || !s.token){
+      toast("Uzupełnij wszystkie pola GitHub.");
+      setGithubStatus("brakuje ustawień.");
+      return null;
+    }
+    storage.setItem(GITHUB_SETTINGS_KEY, JSON.stringify(s));
+    toast("Zapamiętano ustawienia GitHub");
+    setGithubStatus("ustawienia zapamiętane.");
+    return s;
+  }
+  function requireGithubSettings(){
+    const s = getGithubSettings();
+    if(s && s.owner && s.repo && s.branch && s.path && s.token) return s;
+    fillGithubFields();
+    openModal("dataModal");
+    toast("Najpierw uzupełnij GitHub online i kliknij: Zapamiętaj ustawienia.");
+    setGithubStatus("najpierw uzupełnij ustawienia.");
+    return null;
+  }
+  function githubHeaders(settings){
+    return {
+      "Accept":"application/vnd.github+json",
+      "Authorization":"Bearer " + settings.token,
+      "X-GitHub-Api-Version":"2022-11-28"
+    };
+  }
+  function githubContentUrl(settings){
+    const encodedPath = settings.path.split("/").map(encodeURIComponent).join("/");
+    return `https://api.github.com/repos/${encodeURIComponent(settings.owner)}/${encodeURIComponent(settings.repo)}/contents/${encodedPath}`;
+  }
+  function utf8ToBase64(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin = "";
+    bytes.forEach(b=>{ bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }
+  function base64ToUtf8(base64){
+    const bin = atob(String(base64 || "").replace(/\s/g,""));
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  async function fetchGithubFile(settings){
+    const url = githubContentUrl(settings) + `?ref=${encodeURIComponent(settings.branch)}`;
+    const res = await fetch(url, {headers: githubHeaders(settings)});
+    if(res.status === 404) return {exists:false, sha:null, parsed:{days:{}, entries:[]}};
+    let body = null;
+    try{ body = await res.json(); }catch(e){ body = null; }
+    if(!res.ok){
+      const msg = body?.message ? body.message : `błąd ${res.status}`;
+      throw new Error(msg);
+    }
+    const text = base64ToUtf8(body.content || "e30=");
+    const parsed = text.trim() ? JSON.parse(text) : {days:{}, entries:[]};
+    return {exists:true, sha:body.sha, parsed};
+  }
+  async function loadGithubOnline(){
+    const settings = requireGithubSettings();
+    if(!settings) return;
+    try{
+      setGithubStatus("wczytuję online...");
+      const remote = await fetchGithubFile(settings);
+      setDataObject(remote.parsed);
+      ensureDay(currentDate);
+      saveData();
+      renderAll();
+      renderHistory();
+      setGithubStatus(`wczytano online ${new Date().toLocaleString("pl-PL")}.`);
+      toast("Wczytano dane online");
+    }catch(e){
+      console.error(e);
+      setGithubStatus("nie udało się wczytać: " + e.message);
+      toast("Nie udało się wczytać online.");
+    }
+  }
+  async function saveGithubOnline(){
+    const settings = requireGithubSettings();
+    if(!settings) return;
+    try{
+      saveData();
+      setGithubStatus("zapisuję online...");
+      const remote = await fetchGithubFile(settings);
+      const body = {
+        message: `Zapis danych Grafik dnia ${new Date().toLocaleString("pl-PL")}`,
+        content: utf8ToBase64(JSON.stringify(normalizeDataObject(data), null, 2)),
+        branch: settings.branch
+      };
+      if(remote.sha) body.sha = remote.sha;
+      const res = await fetch(githubContentUrl(settings), {
+        method:"PUT",
+        headers: {...githubHeaders(settings), "Content-Type":"application/json"},
+        body: JSON.stringify(body)
+      });
+      let out = null;
+      try{ out = await res.json(); }catch(e){ out = null; }
+      if(!res.ok){
+        const msg = out?.message ? out.message : `błąd ${res.status}`;
+        throw new Error(msg);
+      }
+      setGithubStatus(`zapisano online ${new Date().toLocaleString("pl-PL")}.`);
+      toast("Zapisano online");
+    }catch(e){
+      console.error(e);
+      setGithubStatus("nie udało się zapisać: " + e.message);
+      toast("Nie udało się zapisać online.");
+    }
+  }
+  function clearGithubSettings(){
+    if(storage) storage.removeItem(GITHUB_SETTINGS_KEY);
+    fillGithubFields();
+    setGithubStatus("ustawienia usunięte z tej przeglądarki.");
+    toast("Usunięto ustawienia GitHub");
+  }
+
+  function bindEvents(){
+    $("metricGrid").addEventListener("click",e=>{
+      const btn = e.target.closest("[data-metric]");
+      if(btn) openEntry(btn.dataset.metric);
+    });
+    $("entryForm").addEventListener("submit", saveEntryFromForm);
+    $("cancelEntryBtn").addEventListener("click",()=>closeModal("entryModal"));
+    $("deleteEntryBtn").addEventListener("click", deleteEditingEntry);
+    $("newEntryBtn").addEventListener("click",()=>openEntry(activeMetricId));
+    $("historyBtn").addEventListener("click",()=>{ renderHistory(); openModal("historyModal"); });
+    $("closeHistoryBtn").addEventListener("click",()=>closeModal("historyModal"));
+    $("openHistoryDateBtn").addEventListener("click",()=>{ const d=$("historyDateInput").value || todayIso(); setDay(d); closeModal("historyModal"); });
+    $("openSelectedHistoryDayBtn").addEventListener("click",()=>{ if(selectedHistoryDate){ setDay(selectedHistoryDate); closeModal("historyModal"); }});
+    $("githubLoadTopBtn").addEventListener("click", loadGithubOnline);
+    $("githubSaveTopBtn").addEventListener("click", saveGithubOnline);
+    $("dataBtn").addEventListener("click",()=>{ fillGithubFields(); openModal("dataModal"); });
+    $("closeDataBtn").addEventListener("click",()=>closeModal("dataModal"));
+    $("saveGithubSettingsBtn").addEventListener("click", saveGithubSettings);
+    $("githubLoadBtn").addEventListener("click", loadGithubOnline);
+    $("githubSaveBtn").addEventListener("click", saveGithubOnline);
+    $("clearGithubSettingsBtn").addEventListener("click", clearGithubSettings);
+    $("exportJsonBtn").addEventListener("click", exportJson);
+    $("importJsonInput").addEventListener("change",e=>{ if(e.target.files[0]) importJsonFile(e.target.files[0]); });
+    $("exportPdfBtn").addEventListener("click", exportPdf);
+    document.querySelectorAll(".modal-backdrop").forEach(m=>m.addEventListener("click",e=>{ if(e.target===m) m.classList.remove("open"); }));
+    document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeAllModals(); });
+    window.addEventListener("resize",drawChart);
+  }
+
+  function init(){
+    loadData();
+    ensureDay(currentDate);
+    initMetricButtons();
+    initToggles();
+    bindEvents();
+    updateDayLabel();
+    drawChart();
+    fillGithubFields();
+    if(!storage) toast("Uwaga: przeglądarka zablokowała zapis danych. Przyciski działają, ale dane mogą nie zostać zapisane po zamknięciu strony.");
+  }
+  init();
+})();
+</script>
+</body>
+</html>
