@@ -1,0 +1,23 @@
+GRAFIK DNIA — FOLDER DO GITHUBA
+
+Wgraj do repozytorium dokładnie te pliki:
+
+index.html
+.nojekyll
+data/dane.json
+
+Najprościej:
+1. Wejdź w swoje repozytorium na GitHubie.
+2. Kliknij Add file -> Upload files.
+3. Przeciągnij plik index.html oraz plik .nojekyll.
+4. Utwórz folder data i wgraj do niego dane.json albo przeciągnij cały folder data.
+5. Wejdź w Settings -> Pages i ustaw publikowanie z branch main oraz folder /root.
+
+Potem na stronie:
+1. Kliknij DANE.
+2. W sekcji GitHub online wpisz: login GitHub, nazwę repozytorium, branch main, plik data/dane.json i token.
+3. Kliknij Zapamiętaj ustawienia.
+4. Używaj WCZYTAJ ONLINE przed edycją i ZAPISZ ONLINE po edycji.
+
+WAŻNE:
+Nie wgrywaj tokenu do GitHuba jako pliku. Token wpisujesz tylko w okienku strony.
